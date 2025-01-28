@@ -1,7 +1,37 @@
 <Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
-    <UseWindowsForms>true</UseWindowsForms>
+      <OutputType>WinExe</OutputType>
+      <TargetFramework>net7.0-windows</TargetFramework>
+      <UseWindowsForms>true</UseWindowsForms>
+      <SelfContained>true</SelfContained>
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+      <PublishSingleFile>true</PublishSingleFile>
+      <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+
+  <!-- <ItemGroup>
+    <None Update="CursorMon.icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup> -->
+
+  <ItemGroup>
+    <Content Include="CursorMon.icon.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="start.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="stop.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="exit.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="9.0.1" />
+  </ItemGroup>
+
 </Project>

@@ -37,36 +37,33 @@ namespace CursorMon
         {
             // Create a simple tray menu
             trayMenu = new ContextMenuStrip();
-            trayMenu.Items.Add("Start", null, OnStart);
-            trayMenu.Items.Add("Stop", null, OnStop);
-            trayMenu.Items.Add("Exit", null, OnExit);
+            trayMenu.Items.Add("Start", Image.FromFile(@"start.png"), OnStart);
+            trayMenu.Items.Add("Stop", Image.FromFile(@"stop.png"), OnStop);
+            trayMenu.Items.Add("Exit", Image.FromFile(@"exit.png"), OnExit);
 
             // Create a tray icon
             trayIcon = new NotifyIcon
             {
                 Text = "Monitor Cursor Switcher",
-                Icon = SystemIcons.Application, // Replace with a custom icon if needed
+                // Icon = SystemIcons.Application, // Replace with a custom icon if needed
+                Icon = new Icon("CursorMon.icon.ico"),
                 ContextMenuStrip = trayMenu,
                 Visible = true
             };
 
-            RegisterHotkey();
-
-            // Hide the window on startup
+            // Ensure form is hidden
             this.Load += (sender, e) => this.Hide();
             this.ShowInTaskbar = false;
             this.WindowState = FormWindowState.Minimized;
-        }
 
-        protected override CreateParams CreateParams
-        {
-            get
+            // Ensure hotkey is registered after handle is created
+            this.HandleCreated += (sender, e) =>
             {
-                var cp = base.CreateParams;
-                // Ensure the form continues to process Windows messages even when hidden
-                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW
-                return cp;
-            }
+                if (!hotkeyRegistered)
+                {
+                    RegisterHotkey();
+                }
+            };
         }
 
         protected override void WndProc(ref Message m)
