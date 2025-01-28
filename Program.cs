@@ -51,6 +51,11 @@ namespace CursorMon
             };
 
             RegisterHotkey();
+
+            // Hide the window on startup
+            this.Load += (sender, e) => this.Hide();
+            this.ShowInTaskbar = false;
+            this.WindowState = FormWindowState.Minimized;
         }
 
         protected override void WndProc(ref Message m)
