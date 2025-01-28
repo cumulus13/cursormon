@@ -2,7 +2,7 @@
 
 Cursor Monitoring Tool (C#/.NET)
 
-This application is designed to work in combination with VistaSwitcher, utilizing specific settings for enhanced task management across multiple monitors.
+This application is designed to work in combination with VistaSwitcher now as [Alt-Tab Terminator](http://www.ntwind.com/software/vistaswitcher.html) and i'm use VistaSwitcher [old version](https://www.softpedia.com/get/System/OS-Enhancements/VistaSwitcher.shtml), utilizing specific settings for enhanced task management across multiple monitors.
 
 ## Prerequisites
 
