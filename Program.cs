@@ -58,6 +58,17 @@ namespace CursorMon
             this.WindowState = FormWindowState.Minimized;
         }
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                // Ensure the form continues to process Windows messages even when hidden
+                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW
+                return cp;
+            }
+        }
+
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
