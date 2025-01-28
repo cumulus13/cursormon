@@ -10,7 +10,6 @@ namespace CursorMon
         // Constants for hotkey modifiers
         private const int MOD_ALT = 0x0001;
         private const int MOD_SHIFT = 0x0004;
-        private const int MOD_CONTROL = 0x0002;
 
         // Constant for hotkey message
         private const int WM_HOTKEY = 0x0312;
@@ -19,7 +18,7 @@ namespace CursorMon
         private const int HOTKEY_ID = 1;
 
         private NotifyIcon trayIcon;
-        private ContextMenu trayMenu;
+        private ContextMenuStrip trayMenu;
         private bool hotkeyRegistered = false;
 
         [DllImport("user32.dll")]
@@ -37,17 +36,17 @@ namespace CursorMon
         public Program()
         {
             // Create a simple tray menu
-            trayMenu = new ContextMenu();
-            trayMenu.MenuItems.Add("Start", OnStart);
-            trayMenu.MenuItems.Add("Stop", OnStop);
-            trayMenu.MenuItems.Add("Exit", OnExit);
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add("Start", null, OnStart);
+            trayMenu.Items.Add("Stop", null, OnStop);
+            trayMenu.Items.Add("Exit", null, OnExit);
 
             // Create a tray icon
             trayIcon = new NotifyIcon
             {
                 Text = "Monitor Cursor Switcher",
                 Icon = SystemIcons.Application, // Replace with a custom icon if needed
-                ContextMenu = trayMenu,
+                ContextMenuStrip = trayMenu,
                 Visible = true
             };
 
@@ -85,7 +84,7 @@ namespace CursorMon
             var nextIndex = (currentIndex + 1) % screens.Length;
             var nextScreen = screens[nextIndex];
 
-            var nextScreenCenter = new System.Drawing.Point(
+            var nextScreenCenter = new Point(
                 nextScreen.Bounds.Left + nextScreen.Bounds.Width / 2,
                 nextScreen.Bounds.Top + nextScreen.Bounds.Height / 2
             );
