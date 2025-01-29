@@ -39,6 +39,19 @@ namespace CursorMon
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+        [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int dwProcessId);
+
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -101,6 +114,7 @@ namespace CursorMon
 
         private void MoveCursorToNextMonitor()
         {
+            Console.WriteLine("Run move cursor .....");
             var cursorPosition = Cursor.Position;
             var screens = Screen.AllScreens;
 
@@ -131,12 +145,13 @@ namespace CursorMon
 
         private void BringLastWindowToForeground()
         {
+            Console.WriteLine("Run bring to foreground .....");
             var cursorPosition = Cursor.Position;
             IntPtr lastForegroundWindow = IntPtr.Zero;
 
             EnumWindows((hWnd, lParam) =>
             {
-                if (hWnd == GetForegroundWindow()) return true; // Skip currently focused window
+                if (hWnd == GetForegroundWindow()) return true; // Skip the currently focused window
 
                 if (GetWindowRect(hWnd, out RECT rect))
                 {
@@ -154,13 +169,34 @@ namespace CursorMon
 
             if (lastForegroundWindow != IntPtr.Zero)
             {
-                SetForegroundWindow(lastForegroundWindow);
+                SetForegroundWindowWithPrivileges(lastForegroundWindow);
                 Console.WriteLine("Set last window to foreground.");
             }
             else
             {
                 Console.WriteLine("No window found on the current monitor.");
             }
+        }
+
+        private void SetForegroundWindowWithPrivileges(IntPtr hWnd)
+        {
+            uint targetThreadId = GetWindowThreadProcessId(hWnd, out _);
+            uint currentThreadId = GetCurrentThreadId();
+
+            if (targetThreadId != currentThreadId)
+            {
+                // Attach the input of the two threads to allow foreground switching
+                AttachThreadInput(currentThreadId, targetThreadId, true);
+                SetForegroundWindow(hWnd);
+                AttachThreadInput(currentThreadId, targetThreadId, false);
+            }
+            else
+            {
+                SetForegroundWindow(hWnd);
+            }
+
+            // Allow our process to set the foreground window
+            AllowSetForegroundWindow(-1);
         }
 
         private void RegisterHotkey()
