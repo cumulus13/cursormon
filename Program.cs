@@ -27,6 +27,29 @@ namespace CursorMon
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
         [STAThread]
         static void Main()
         {
@@ -45,7 +68,6 @@ namespace CursorMon
             trayIcon = new NotifyIcon
             {
                 Text = "Monitor Cursor Switcher",
-                // Icon = SystemIcons.Application, // Replace with a custom icon if needed
                 Icon = new Icon("CursorMon.icon.ico"),
                 ContextMenuStrip = trayMenu,
                 Visible = true
@@ -71,6 +93,7 @@ namespace CursorMon
             if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
             {
                 MoveCursorToNextMonitor();
+                BringLastWindowToForeground();
             }
 
             base.WndProc(ref m);
@@ -104,6 +127,40 @@ namespace CursorMon
             Cursor.Position = nextScreenCenter;
 
             Console.WriteLine($"Moved cursor to monitor {nextIndex + 1}.");
+        }
+
+        private void BringLastWindowToForeground()
+        {
+            var cursorPosition = Cursor.Position;
+            IntPtr lastForegroundWindow = IntPtr.Zero;
+
+            EnumWindows((hWnd, lParam) =>
+            {
+                if (hWnd == GetForegroundWindow()) return true; // Skip currently focused window
+
+                if (GetWindowRect(hWnd, out RECT rect))
+                {
+                    var windowBounds = new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+
+                    if (windowBounds.Contains(cursorPosition))
+                    {
+                        lastForegroundWindow = hWnd;
+                        return false; // Stop enumeration
+                    }
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            if (lastForegroundWindow != IntPtr.Zero)
+            {
+                SetForegroundWindow(lastForegroundWindow);
+                Console.WriteLine("Set last window to foreground.");
+            }
+            else
+            {
+                Console.WriteLine("No window found on the current monitor.");
+            }
         }
 
         private void RegisterHotkey()
