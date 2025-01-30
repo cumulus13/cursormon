@@ -20,6 +20,8 @@ namespace CursorMon
         private NotifyIcon trayIcon;
         private ContextMenuStrip trayMenu;
         private bool hotkeyRegistered = false;
+        private IntPtr lastWindowMonitor1 = IntPtr.Zero;
+        private IntPtr lastWindowMonitor2 = IntPtr.Zero;
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, int vk);
@@ -34,7 +36,16 @@ namespace CursorMon
         private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetTopWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
         private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -44,7 +55,6 @@ namespace CursorMon
 
         [DllImport("kernel32.dll")]
         private static extern uint GetCurrentThreadId();
-
 
         [DllImport("user32.dll")]
         private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
@@ -57,10 +67,7 @@ namespace CursorMon
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
         {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
+            public int Left, Top, Right, Bottom;
         }
 
         [STAThread]
@@ -91,14 +98,7 @@ namespace CursorMon
             this.ShowInTaskbar = false;
             this.WindowState = FormWindowState.Minimized;
 
-            // Ensure hotkey is registered after handle is created
-            this.HandleCreated += (sender, e) =>
-            {
-                if (!hotkeyRegistered)
-                {
-                    RegisterHotkey();
-                }
-            };
+            this.HandleCreated += (sender, e) => { if (!hotkeyRegistered) RegisterHotkey(); };
         }
 
         protected override void WndProc(ref Message m)
@@ -106,7 +106,7 @@ namespace CursorMon
             if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
             {
                 MoveCursorToNextMonitor();
-                BringLastWindowToForeground();
+                RestorePreviousWindow();
             }
 
             base.WndProc(ref m);
@@ -117,16 +117,7 @@ namespace CursorMon
             Console.WriteLine("Run move cursor .....");
             var cursorPosition = Cursor.Position;
             var screens = Screen.AllScreens;
-
-            Screen currentScreen = null;
-            foreach (var screen in screens)
-            {
-                if (screen.Bounds.Contains(cursorPosition))
-                {
-                    currentScreen = screen;
-                    break;
-                }
-            }
+            var currentScreen = Array.Find(screens, s => s.Bounds.Contains(cursorPosition));
 
             if (currentScreen == null) return;
 
@@ -134,69 +125,37 @@ namespace CursorMon
             var nextIndex = (currentIndex + 1) % screens.Length;
             var nextScreen = screens[nextIndex];
 
-            var nextScreenCenter = new Point(
-                nextScreen.Bounds.Left + nextScreen.Bounds.Width / 2,
-                nextScreen.Bounds.Top + nextScreen.Bounds.Height / 2
-            );
-            Cursor.Position = nextScreenCenter;
+            if (currentIndex == 0)
+            {
+                lastWindowMonitor1 = GetForegroundWindow();
+            }
+            else
+            {
+                lastWindowMonitor2 = GetForegroundWindow();
+            }
 
-            Console.WriteLine($"Moved cursor to monitor {nextIndex + 1}.");
+            Cursor.Position = new Point(nextScreen.Bounds.Left + nextScreen.Bounds.Width / 2, nextScreen.Bounds.Top + nextScreen.Bounds.Height / 2);
         }
 
-        private void BringLastWindowToForeground()
+        private void RestorePreviousWindow()
         {
-            Console.WriteLine("Run bring to foreground .....");
             var cursorPosition = Cursor.Position;
-            IntPtr lastForegroundWindow = IntPtr.Zero;
+            var screens = Screen.AllScreens;
+            var currentScreen = Array.Find(screens, s => s.Bounds.Contains(cursorPosition));
 
-            EnumWindows((hWnd, lParam) =>
+            if (currentScreen == null) return;
+
+            var currentIndex = Array.IndexOf(screens, currentScreen);
+            if (currentIndex == 0 && lastWindowMonitor1 != IntPtr.Zero)
             {
-                if (hWnd == GetForegroundWindow()) return true; // Skip the currently focused window
-
-                if (GetWindowRect(hWnd, out RECT rect))
-                {
-                    var windowBounds = new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-
-                    if (windowBounds.Contains(cursorPosition))
-                    {
-                        lastForegroundWindow = hWnd;
-                        return false; // Stop enumeration
-                    }
-                }
-
-                return true;
-            }, IntPtr.Zero);
-
-            if (lastForegroundWindow != IntPtr.Zero)
-            {
-                SetForegroundWindowWithPrivileges(lastForegroundWindow);
-                Console.WriteLine("Set last window to foreground.");
+                SetForegroundWindow(lastWindowMonitor1);
+                lastWindowMonitor1 = IntPtr.Zero;
             }
-            else
+            else if (currentIndex == 1 && lastWindowMonitor2 != IntPtr.Zero)
             {
-                Console.WriteLine("No window found on the current monitor.");
+                SetForegroundWindow(lastWindowMonitor2);
+                lastWindowMonitor2 = IntPtr.Zero;
             }
-        }
-
-        private void SetForegroundWindowWithPrivileges(IntPtr hWnd)
-        {
-            uint targetThreadId = GetWindowThreadProcessId(hWnd, out _);
-            uint currentThreadId = GetCurrentThreadId();
-
-            if (targetThreadId != currentThreadId)
-            {
-                // Attach the input of the two threads to allow foreground switching
-                AttachThreadInput(currentThreadId, targetThreadId, true);
-                SetForegroundWindow(hWnd);
-                AttachThreadInput(currentThreadId, targetThreadId, false);
-            }
-            else
-            {
-                SetForegroundWindow(hWnd);
-            }
-
-            // Allow our process to set the foreground window
-            AllowSetForegroundWindow(-1);
         }
 
         private void RegisterHotkey()
@@ -248,3 +207,4 @@ namespace CursorMon
         }
     }
 }
+
